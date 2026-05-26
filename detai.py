@@ -14,19 +14,31 @@ class DNA:
         self.SumDistances = self.calculate_distance(distances)
 
     def calculate_distance(self, distances):
+
         total = 0
 
         for i in range(len(self.Genes) - 1):
-            total += distances[self.Genes[i]][self.Genes[i + 1]]
 
-        total += distances[self.Genes[-1]][self.Genes[0]]
+            total += distances[
+                self.Genes[i]
+            ][
+                self.Genes[i + 1]
+            ]
+
+        total += distances[
+            self.Genes[-1]
+        ][
+            self.Genes[0]
+        ]
 
         return total
 
     def cross_over(self, partner, split_point, distances):
+
         child = self.Genes[:split_point]
 
         for gene in partner.Genes:
+
             if gene not in child:
                 child.append(gene)
 
@@ -34,7 +46,11 @@ class DNA:
 
 
 class GA:
-    def __init__(self, n_cities, n_population, mutation_rate):
+
+    def __init__(self,
+                 n_cities,
+                 n_population,
+                 mutation_rate):
 
         self.NCities = n_cities
         self.NPopulation = n_population
@@ -44,9 +60,29 @@ class GA:
         self.Population = []
 
         self._distances = []
+
         self._rnd = random.Random()
 
-    def init_cities(self, width, height):
+    # =========================
+    # NHẬP THÀNH PHỐ THỦ CÔNG
+    # =========================
+    def init_cities_manual(self):
+
+        print("\n=== NHẬP TỌA ĐỘ THÀNH PHỐ ===\n")
+
+        for i in range(self.NCities):
+
+            x = int(input(f"Nhập X thành phố {i}: "))
+            y = int(input(f"Nhập Y thành phố {i}: "))
+
+            self.Cities.append(City(x, y))
+
+        self._create_distance_matrix()
+
+    # =========================
+    # RANDOM THÀNH PHỐ
+    # =========================
+    def init_cities_random(self, width, height):
 
         for _ in range(self.NCities):
 
@@ -57,21 +93,32 @@ class GA:
 
         self._create_distance_matrix()
 
+    # =========================
+    # TẠO MA TRẬN KHOẢNG CÁCH
+    # =========================
     def _create_distance_matrix(self):
 
         self._distances = [
+
             [0 for _ in range(self.NCities)]
+
             for _ in range(self.NCities)
         ]
 
         for i in range(self.NCities):
+
             for j in range(self.NCities):
 
                 dx = self.Cities[i].X - self.Cities[j].X
                 dy = self.Cities[i].Y - self.Cities[j].Y
 
-                self._distances[i][j] = math.sqrt(dx * dx + dy * dy)
+                self._distances[i][j] = math.sqrt(
+                    dx * dx + dy * dy
+                )
 
+    # =========================
+    # KHỞI TẠO POPULATION
+    # =========================
     def init_population(self):
 
         for _ in range(self.NPopulation):
@@ -80,10 +127,16 @@ class GA:
 
             self._rnd.shuffle(genes)
 
-            dna = DNA(genes, self._distances)
+            dna = DNA(
+                genes,
+                self._distances
+            )
 
             self.Population.append(dna)
 
+    # =========================
+    # TÌM DNA TỐT NHẤT
+    # =========================
     def _get_best_dna(self):
 
         best = self.Population[0]
@@ -95,62 +148,94 @@ class GA:
 
         return best
 
+    # =========================
+    # TẠO MATING POOL
+    # =========================
     def _create_mating_pool(self):
 
-        f_proportion = []
+        pool = []
 
-        best_dna = self._get_best_dna()
+        best = self._get_best_dna()
 
         for i in range(len(self.Population)):
 
-            p = int(
+            fitness = int(
                 math.floor(
-                    best_dna.SumDistances
-                    * 100.0 /
+                    best.SumDistances * 100 /
                     self.Population[i].SumDistances
                 )
             )
 
-            p = max(1, p)
+            fitness = max(1, fitness)
 
-            for _ in range(p):
-                f_proportion.append(i)
+            for _ in range(fitness):
+                pool.append(i)
 
-        return f_proportion
+        return pool
 
+    # =========================
+    # MUTATION
+    # =========================
     def _mutate(self, dna):
 
-        for i in range(len(dna.Genes)):
+        if self._rnd.random() < self.MutationRate:
 
-            r = self._rnd.random()
+            i1 = self._rnd.randint(
+                0,
+                len(dna.Genes) - 1
+            )
 
-            if r < self.MutationRate:
+            i2 = i1
 
-                i1 = self._rnd.randint(0, len(self.Cities) - 1)
+            while i2 == i1:
 
-                i2 = self._rnd.randint(0, len(self.Cities) - 1)
-
-                dna.Genes[i1], dna.Genes[i2] = (
-                    dna.Genes[i2],
-                    dna.Genes[i1]
+                i2 = self._rnd.randint(
+                    0,
+                    len(dna.Genes) - 1
                 )
 
-        dna.SumDistances = dna.calculate_distance(self._distances)
+            dna.Genes[i1], dna.Genes[i2] = (
+                dna.Genes[i2],
+                dna.Genes[i1]
+            )
 
+            dna.SumDistances = dna.calculate_distance(
+                self._distances
+            )
+
+    # =========================
+    # EVOLUTION 1 LẦN
+    # =========================
     def _evol_once(self):
 
         pool = self._create_mating_pool()
 
-        self.Population[0] = self._get_best_dna()
+        best = self._get_best_dna()
+
+        # GIỮ ELITE
+        self.Population[0] = DNA(
+            best.Genes[:],
+            self._distances
+        )
 
         for i in range(1, len(self.Population)):
 
             p1 = self.Population[
-                pool[self._rnd.randint(0, len(pool) - 1)]
+                pool[
+                    self._rnd.randint(
+                        0,
+                        len(pool) - 1
+                    )
+                ]
             ]
 
             p2 = self.Population[
-                pool[self._rnd.randint(0, len(pool) - 1)]
+                pool[
+                    self._rnd.randint(
+                        0,
+                        len(pool) - 1
+                    )
+                ]
             ]
 
             split_point = self._rnd.randint(
@@ -158,38 +243,67 @@ class GA:
                 len(self.Cities) - 1
             )
 
-            new_dna = p1.cross_over(
+            child = p1.cross_over(
                 p2,
                 split_point,
                 self._distances
             )
 
-            self._mutate(new_dna)
+            self._mutate(child)
 
-            self.Population[i] = new_dna
+            self.Population[i] = child
 
-    def evolution(self, times):
+    # =========================
+    # EVOLUTION
+    # =========================
+    def evolution(self, generations):
 
-        for _ in range(times):
+        for i in range(generations):
+
             self._evol_once()
 
-        dna = self._get_best_dna()
+            if (i + 1) % 50 == 0:
 
-        print(f"Evolution {times}: {dna.Genes}")
+                best = self._get_best_dna()
 
-        return dna
+                print(
+                    f"Generation {i+1} "
+                    f"- Best Distance: "
+                    f"{best.SumDistances:.2f}"
+                )
+
+        return self._get_best_dna()
 
 
+# ===================================
+# MAIN
+# ===================================
 if __name__ == "__main__":
 
-    N_CITIES = 20
-    N_POPULATION = 100
-    MUTATION_RATE = 0.01
+    print("=== GENETIC ALGORITHM CHO TSP ===\n")
 
-    WIDTH = 800
-    HEIGHT = 600
+    N_CITIES = int(
+        input("Nhập số thành phố: ")
+    )
 
-    GENERATIONS = 500
+    N_POPULATION = int(
+        input("Nhập kích thước dân số: ")
+    )
+
+    MUTATION_RATE = float(
+        input("Nhập tỉ lệ đột biến: ")
+    )
+
+    GENERATIONS = int(
+        input("Nhập số thế hệ tiến hóa: ")
+    )
+
+    print("\n1. Random thành phố")
+    print("2. Nhập thủ công")
+
+    mode = int(
+        input("\nChọn chế độ: ")
+    )
 
     ga = GA(
         N_CITIES,
@@ -197,14 +311,54 @@ if __name__ == "__main__":
         MUTATION_RATE
     )
 
-    ga.init_cities(WIDTH, HEIGHT)
+    # =========================
+    # RANDOM MODE
+    # =========================
+    if mode == 1:
+
+        WIDTH = int(
+            input("Nhập chiều rộng: ")
+        )
+
+        HEIGHT = int(
+            input("Nhập chiều cao: ")
+        )
+
+        ga.init_cities_random(
+            WIDTH,
+            HEIGHT
+        )
+
+    # =========================
+    # MANUAL MODE
+    # =========================
+    else:
+
+        ga.init_cities_manual()
 
     ga.init_population()
 
-    print(f"Chạy Genetic Algorithm cho TSP với {N_CITIES} thành phố...")
+    print("\nĐang chạy Genetic Algorithm...\n")
 
     best = ga.evolution(GENERATIONS)
 
-    print(f"Khoảng cách tốt nhất: {best.SumDistances}")
+    print("\n=== KẾT QUẢ ===")
 
-    print(f"Lộ trình: {best.Genes}")
+    print(
+        f"Khoảng cách tốt nhất: "
+        f"{best.SumDistances:.2f}"
+    )
+
+    print(
+        f"Lộ trình tốt nhất: "
+        f"{best.Genes}"
+    )
+
+    print("\n=== TỌA ĐỘ THÀNH PHỐ ===")
+
+    for i, city in enumerate(ga.Cities):
+
+        print(
+            f"City {i}: "
+            f"({city.X}, {city.Y})"
+        )
