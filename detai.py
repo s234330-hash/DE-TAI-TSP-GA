@@ -1,5 +1,8 @@
 import random
 import math
+import matplotlib
+matplotlib.use('TkAgg')   # dùng TkAgg để hiện cửa sổ; đổi thành 'Agg' nếu chỉ muốn lưu file
+import matplotlib.pyplot as plt
 
 
 class City:
@@ -124,7 +127,6 @@ class GA:
         for _ in range(self.NPopulation):
 
             genes = list(range(self.NCities))
-
             self._rnd.shuffle(genes)
 
             dna = DNA(
@@ -254,17 +256,19 @@ class GA:
             self.Population[i] = child
 
     # =========================
-    # EVOLUTION
+    # EVOLUTION + GHI LỊCH SỬ
     # =========================
     def evolution(self, generations):
 
+        history = []
         for i in range(generations):
 
             self._evol_once()
 
-            if (i + 1) % 50 == 0:
+            best = self._get_best_dna()
+            history.append(best.SumDistances)
 
-                best = self._get_best_dna()
+            if (i + 1) % 50 == 0:
 
                 print(
                     f"Generation {i+1} "
@@ -272,7 +276,68 @@ class GA:
                     f"{best.SumDistances:.2f}"
                 )
 
-        return self._get_best_dna()
+        return self._get_best_dna(), history
+
+
+# ===================================
+# VẼ KẾT QUẢ
+# ===================================
+def plot_result(ga, best, history, generations):
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    fig.patch.set_facecolor('#0f1117')
+
+    # ---------- Panel trái: lộ trình ----------
+    ax1 = axes[0]
+    ax1.set_facecolor('#0f1117')
+    ax1.set_title(
+        f'Generation: {generations} | Distance: {best.SumDistances:.2f}',
+        color='white', fontsize=13, pad=10
+    )
+
+    xs = [ga.Cities[i].X for i in best.Genes]
+    ys = [ga.Cities[i].Y for i in best.Genes]
+    xs.append(xs[0])
+    ys.append(ys[0])
+
+    ax1.plot(xs, ys, color='#4fc3f7', linewidth=2, zorder=1)
+    ax1.scatter(
+        [c.X for c in ga.Cities],
+        [c.Y for c in ga.Cities],
+        color='#ff7043', s=60, zorder=3,
+        edgecolors='white', linewidths=0.8
+    )
+
+    for i, city in enumerate(ga.Cities):
+        ax1.annotate(
+            str(i), (city.X, city.Y),
+            textcoords='offset points', xytext=(5, 5),
+            color='#cfd8dc', fontsize=8
+        )
+
+    ax1.tick_params(colors='#607d8b')
+    for spine in ax1.spines.values():
+        spine.set_edgecolor('#37474f')
+    ax1.xaxis.label.set_color('#90a4ae')
+    ax1.yaxis.label.set_color('#90a4ae')
+
+    # ---------- Panel phải: biểu đồ hội tụ ----------
+    ax2 = axes[1]
+    ax2.set_facecolor('#0f1117')
+    ax2.set_title(
+        'Khoảng cách tốt nhất theo thế hệ',
+        color='white', fontsize=13, pad=10
+    )
+    ax2.plot(history, color='#66bb6a', linewidth=1.5)
+    ax2.fill_between(range(len(history)), history, alpha=0.15, color='#66bb6a')
+    ax2.set_xlabel('Thế hệ', color='#90a4ae')
+    ax2.set_ylabel('Khoảng cách', color='#90a4ae')
+    ax2.tick_params(colors='#607d8b')
+    for spine in ax2.spines.values():
+        spine.set_edgecolor('#37474f')
+
+    plt.tight_layout(pad=2)
+    plt.show()
 
 
 # ===================================
@@ -291,7 +356,7 @@ if __name__ == "__main__":
     )
 
     MUTATION_RATE = float(
-        input("Nhập tỉ lệ đột biến: ")
+        input("Nhập tỉ lệ đột biến (vd: 0.03): ")
     )
 
     GENERATIONS = int(
@@ -340,7 +405,7 @@ if __name__ == "__main__":
 
     print("\nĐang chạy Genetic Algorithm...\n")
 
-    best = ga.evolution(GENERATIONS)
+    best, history = ga.evolution(GENERATIONS)
 
     print("\n=== KẾT QUẢ ===")
 
@@ -362,3 +427,8 @@ if __name__ == "__main__":
             f"City {i}: "
             f"({city.X}, {city.Y})"
         )
+
+    # =========================
+    # HIỆN HÌNH
+    # =========================
+    plot_result(ga, best, history, GENERATIONS)
